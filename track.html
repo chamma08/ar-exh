@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>AIR STUDIOS 2025</title>
+    <!-- Include A-Frame and MindAR -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+      
+      a-scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none; /* Hide scenes initially */
+      }
+      
+      a-scene.active {
+        display: block; /* Show only the active scene */
+      }
+
+      #message-box {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 85%;
+        max-width: 400px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        padding: 20px;
+        border-radius: 16px;
+        z-index: 1000;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        backdrop-filter: blur(8px);
+        border: 2px solid rgba(255, 112, 2, 0.4);
+        transition: all 0.3s ease;
+      }
+
+      #header-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 15px;
+        width: 100%;
+        position: relative;
+      }
+
+      #heading {
+        font-size: clamp(1.1rem, 4vw, 1.5rem);
+        font-weight: 600;
+        margin: 0;
+        text-align: center;
+        line-height: 1.3;
+      }
+
+      #subheading {
+        color: #ff5e00;
+        font-weight: 700;
+      }
+
+      #message-image {
+        width: clamp(80px, 25vw, 120px);
+        height: clamp(80px, 25vw, 120px);
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 15px 0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border: 3px solid #ff7002;
+      }
+
+      #message-content {
+        text-align: center;
+        margin: 10px 0 20px;
+        font-size: clamp(0.9rem, 3.5vw, 1rem);
+        line-height: 1.5;
+        color: #555;
+      }
+
+      #close-button {
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        width: 30px;
+        height: 30px;
+        background: #ff7002;
+        border: none;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: all 0.2s ease;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+      }
+
+      #close-button:hover {
+        background: #e65100;
+        transform: scale(1.1);
+      }
+
+      #navigation-buttons {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      .nav-button {
+        background-color: #ff7002;
+        color: white;
+        border: none;
+        padding: 10px 0;
+        border-radius: 30px;
+        font-size: clamp(14px, 3.5vw, 16px);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        flex: 1;
+        max-width: 120px;
+        box-shadow: 0 4px 8px rgba(255, 112, 2, 0.3);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        outline: none;
+        touch-action: manipulation;
+      }
+
+      .nav-button:hover, .nav-button:focus {
+        background-color: #e65100;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(255, 112, 2, 0.4);
+      }
+
+      .nav-button:active {
+        transform: translateY(1px);
+      }
+
+      .nav-button:disabled {
+        background-color: #ccc;
+        color: #888;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+
+      /* Space between buttons */
+      #prev-button {
+        margin-right: 10px;
+      }
+
+      #next-button {
+        margin-left: 10px;
+      }
+
+      /* Progress indicator */
+      #progress-indicator {
+        display: flex;
+        justify-content: center;
+        margin: 15px 0 5px;
+      }
+
+      .progress-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #ddd;
+        border-radius: 50%;
+        margin: 0 5px;
+        transition: all 0.3s ease;
+      }
+
+      .progress-dot.active {
+        background-color: #ff7002;
+        transform: scale(1.3);
+      }
+
+      /* Loading indicator */
+      #loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        flex-direction: column;
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 112, 2, 0.3);
+        border-radius: 50%;
+        border-top-color: #ff7002;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      #loading-text {
+        color: white;
+        margin-top: 15px;
+        font-size: 16px;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Safari iOS specific fixes */
+      @supports (-webkit-touch-callout: none) {
+        .nav-button, #close-button {
+          padding-top: 10px;
+          padding-bottom: 10px;
+        }
+      }
+
+      /* Media queries for different device sizes */
+      @media screen and (max-width: 480px) {
+        #message-box {
+          width: 90%;
+          padding: 15px;
+          max-width: 350px;
+        }
+
+        #message-content {
+          margin-bottom: 15px;
+        }
+
+        .nav-button {
+          min-height: 40px;
+          padding: 8px 15px;
+        }
+      }
+
+      @media screen and (max-height: 700px) {
+        #message-box {
+          padding: 15px;
+        }
+
+        #message-image {
+          margin: 8px 0;
+        }
+
+        #progress-indicator {
+          margin: 10px 0 5px;
+        }
+      }
+
+      /* For very small screens */
+      @media screen and (max-width: 360px) {
+        #message-box {
+          width: 92%;
+          padding: 12px;
+        }
+
+        .nav-button {
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+
+        #heading {
+          font-size: 1.1rem;
+        }
+      }
+
+      /* For landscape orientation */
+      @media screen and (max-height: 500px) and (orientation: landscape) {
+        #message-box {
+          flex-direction: row;
+          flex-wrap: wrap;
+          max-width: 500px;
+          top: 50%;
+          padding: 15px;
+        }
+
+        #header-container {
+          width: 30%;
+          margin-bottom: 0;
+          margin-right: 15px;
+        }
+
+        #message-content {
+          width: 65%;
+          text-align: left;
+          margin: 0;
+        }
+
+        #progress-indicator {
+          width: 100%;
+          order: 3;
+        }
+
+        #navigation-buttons {
+          width: 100%;
+          order: 4;
+        }
+
+        #message-image {
+          width: 60px;
+          height: 60px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div id="loading-text">Loading AR experience...</div>
+    </div>
+    
+    <div id="message-box">
+      <button id="close-button">✕</button>
+      <div id="header-container">
+        <h2 id="heading">Experience Our<span id="subheading">AR from AIR STUDIOS</span></h2>
+        <img id="message-image" src="a.png" alt="AR Studios Logo" />
+      </div>
+      <p id="message-content">
+        Scan the image you want to visualize in AR. Once scanned, navigate to the corresponding model.
+      </p>
+      <div id="progress-indicator">
+        <!-- Progress dots will be dynamically added here -->
+      </div>
+      <div id="navigation-buttons">
+        <button class="nav-button" id="prev-button" disabled>Previous</button>
+        <button class="nav-button" id="next-button">Next</button>
+      </div>
+    </div>
+    
+    <!-- Scene for the first .mind file -->
+    <a-scene
+      id="scene1"
+      mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model1" src="./models/ELE.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target1"></a-entity>
+    </a-scene>
+
+    <!-- Scene for the second .mind file -->
+    <a-scene
+      id="scene2"
+      mindar-image="imageTargetSrc: ./targets2.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model2" src="./models/ELE2.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target2">
+        <a-entity gltf-model="#model2" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!-- Scene for the third .mind file -->
+    <a-scene
+      id="scene3"
+      mindar-image="imageTargetSrc: ./targets3.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model3" src="./models/ELE3.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target3">
+        <a-entity gltf-model="#model3" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the fourth .mind file-->
+    <a-scene
+      id="scene4"
+      mindar-image="imageTargetSrc: ./targets4.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model4" src="./models/ELE4.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target4">
+        <a-entity gltf-model="#model4" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the fifth .mind file-->
+    <a-scene
+      id="scene5"
+      mindar-image="imageTargetSrc: ./targets5.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model5" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target5">
+        <a-entity gltf-model="#model5" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the sixth .mind file-->
+    <a-scene
+      id="scene6"
+      mindar-image="imageTargetSrc: ./targets6.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model6" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target6">
+        <a-entity gltf-model="#model6" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the seventh .mind file-->
+    <a-scene
+      id="scene7"
+      mindar-image="imageTargetSrc: ./targets7.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model7" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target7">
+        <a-entity gltf-model="#model7" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the eighth .mind file-->
+    <a-scene
+      id="scene8"
+      mindar-image="imageTargetSrc: ./targets8.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model8" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target8">
+        <a-entity gltf-model="#model8" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the ninth .mind file-->
+    <a-scene
+      id="scene9"
+      mindar-image="imageTargetSrc: ./targets9.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model9" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target9">
+        <a-entity gltf-model="#model9" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the 10th .mind file-->
+    <a-scene
+      id="scene10"
+      mindar-image="imageTargetSrc: ./targets10.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model10" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target10">
+        <a-entity gltf-model="#model10" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the 11th .mind file-->
+    <a-scene
+      id="scene11"
+      mindar-image="imageTargetSrc: ./targets11.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model11" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target11">
+        <a-entity gltf-model="#model11" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <!--Scene for the 12th .mind file-->
+    <a-scene
+      id="scene12"
+      mindar-image="imageTargetSrc: ./targets12.mind; autoStart: true; showStats: false;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      embedded
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: true"
+    >
+      <a-assets>
+        <a-asset-item id="model12" src="./models/ELE5.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target12">
+        <a-entity gltf-model="#model12" position="0 0 0"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // Messages and icons data
+      const messages = [
+        {
+          text: "Touch Next to see the Instructions for better experience",
+          icon: "a.png",
+          img: "s.jpg",
+          p: "Welcome to AIR STUDIOS AR Experience",
+        },
+        {
+          text: "Point your camera steadily at the Images",
+          icon: "a.png",
+          img: "s.jpg",
+          p: "Welcome to AIR STUDIOS AR Experience",
+        },
+        {
+          text: "Ensure proper lighting for better detection.",
+          icon: "a.png",
+          p: "Welcome to AIR STUDIOS AR Experience",
+        },
+        {
+          text: "Point the camera to a clear flat surface to place the AR",
+          icon: "a.png",
+          img: "s.jpg",
+          p: "Welcome to AIR STUDIOS AR Experience",
+        },
+        {
+          text: "Explore the 3D model in augmented reality!",
+          icon: "a.png",
+          p: "Welcome to AIR STUDIOS AR Experience",
+        },
+        
+      ];
+
+      let currentMessageIndex = 0;
+
+      const messageBox = document.getElementById("message-box");
+      const messageContent = document.getElementById("message-content");
+      const messageIcon = document.getElementById("message-image");
+      const prevButton = document.getElementById("prev-button");
+      const nextButton = document.getElementById("next-button");
+      const heading = document.getElementById("heading");
+      const subheading = document.getElementById("subheading");
+      const progressIndicator = document.getElementById("progress-indicator");
+      const loadingOverlay = document.getElementById("loading-overlay");
+
+      // Create progress dots
+      function createProgressDots() {
+        progressIndicator.innerHTML = ''; // Clear existing dots
+        for (let i = 0; i < messages.length; i++) {
+          const dot = document.createElement("div");
+          dot.className = "progress-dot";
+          if (i === 0) dot.classList.add("active");
+          progressIndicator.appendChild(dot);
+        }
+      }
+      
+      createProgressDots();
+
+      // Function to update the message
+      function updateMessage() {
+        const { text, icon, p } = messages[currentMessageIndex];
+        messageContent.textContent = text;
+        
+        if (icon) {
+          messageIcon.src = icon;
+          messageIcon.style.display = "block";
+        } else {
+          messageIcon.style.display = "none";
+        }
+
+        if (p) {
+          heading.innerHTML = `${p.replace('AIR STUDIOS', '<span id="subheading">AIR STUDIOS</span>')}`;
+        }
+
+        // Update progress dots
+        const dots = document.querySelectorAll('.progress-dot');
+        dots.forEach((dot, index) => {
+          if (index === currentMessageIndex) {
+            dot.classList.add("active");
+          } else {
+            dot.classList.remove("active");
+          }
+        });
+
+        // Disable/Enable navigation buttons
+        prevButton.disabled = currentMessageIndex === 0;
+        nextButton.disabled = currentMessageIndex === messages.length - 1;
+        
+        // Apply animation to the message box
+        messageBox.style.opacity = "0";
+        setTimeout(() => {
+          messageBox.style.opacity = "1";
+        }, 100);
+      }
+
+      // Event listeners for navigation buttons
+      prevButton.addEventListener("click", () => {
+        if (currentMessageIndex > 0) {
+          currentMessageIndex--;
+          updateMessage();
+        }
+      });
+
+      nextButton.addEventListener("click", () => {
+        if (currentMessageIndex < messages.length - 1) {
+          currentMessageIndex++;
+          updateMessage();
+        }
+      });
+
+      // Close button event listener
+      document.getElementById("close-button").addEventListener("click", () => {
+        messageBox.style.display = "none";
+      });
+
+      // Fix for iOS button click delay
+      function addTouchFeedback() {
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+          button.addEventListener('touchstart', function() {
+            this.style.opacity = '0.7';
+          });
+          button.addEventListener('touchend', function() {
+            this.style.opacity = '1';
+          });
+        });
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        // Hide loading overlay once content is loaded
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            loadingOverlay.style.opacity = "0";
+            setTimeout(() => {
+              loadingOverlay.style.display = "none";
+            }, 500);
+          }, 1000);
+        });
+
+        updateMessage();
+        addTouchFeedback();
+        
+        // Get references to all scenes
+        const scenes = Array.from({length: 12}, (_, i) => document.getElementById(`scene${i+1}`));
+        
+        // Show the first scene initially
+        scenes[0].classList.add("active");
+
+        // Set up target event listeners
+        for (let i = 1; i <= 12; i++) {
+          const target = document.getElementById(`target${i}`);
+          
+          target.addEventListener("targetFound", () => {
+            console.log(`Target ${i} found! Navigating to page...`);
+            
+            // Use the correct navigation URL based on the target index
+            let navigateUrl;
+            switch(i) {
+              case 1: navigateUrl = "model1.html"; break;
+              case 2: navigateUrl = "turtle/index.html"; break;
+              case 3: navigateUrl = "model3.html"; break;
+              case 4: navigateUrl = "model4.html"; break;
+              case 5: navigateUrl = "Crown/index.html"; break;
+              case 6: navigateUrl = "model6.html"; break;
+              case 7: navigateUrl = "model7.html"; break;
+              case 8: navigateUrl = "model8.html"; break;
+              case 9: navigateUrl = "sigiriya/index.html"; break;
+              case 10: navigateUrl = "Orchid/index.html"; break;
+              case 11: navigateUrl = "model11.html"; break;
+              case 12: navigateUrl = "model12.html"; break;
+            }
+            
+            // Show loading message before navigation
+            document.getElementById('loading-text').textContent = 'Loading AR model...';
+            loadingOverlay.style.display = 'flex';
+            loadingOverlay.style.opacity = '1';
+            
+            // Navigate with slight delay to show loading indicator
+            setTimeout(() => {
+              window.location.href = navigateUrl;
+            }, 500);
+          });
+
+          target.addEventListener("targetLost", () => {
+            console.log(`Target ${i} lost!`);
+          });
+        }
+
+        // Function to switch between scenes
+        const switchToScene = (sceneIndex) => {
+          scenes.forEach(scene => scene.classList.remove("active"));
+          scenes[sceneIndex - 1].classList.add("active");
+          console.log(`Switched to Scene ${sceneIndex}`);
+        };
+
+        // Auto cycle through scenes
+        let currentScene = 1;
+        setInterval(() => {
+          currentScene = currentScene % 12 + 1;
+          switchToScene(currentScene);
+        }, 5000);
+
+        // Handle device orientation changes
+        window.addEventListener('orientationchange', () => {
+          setTimeout(() => {
+            updateViewportHeight();
+          }, 300);
+        });
+
+        // Fix for mobile viewport height issues
+        function updateViewportHeight() {
+          const vh = window.innerHeight * 0.01;
+          document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        
+        updateViewportHeight();
+        window.addEventListener('resize', updateViewportHeight);
+      });
+
+      // Prevent scroll/zoom on iOS
+      document.addEventListener('touchmove', function(event) {
+        if (event.scale !== 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+      
+      var lastTouchEnd = 0;
+      document.addEventListener('touchend', function(event) {
+        var now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+    </script>
+  </body>
+</html>
